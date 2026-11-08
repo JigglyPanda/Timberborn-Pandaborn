@@ -8,7 +8,7 @@ MANAGED="${1:?path to Timberborn_Data/Managed}"
 CSC=$(find "$(dirname "$(command -v dotnet)")"/.. -name csc.dll -path "*Roslyn/bincore*" 2>/dev/null | head -1)
 [ -n "$CSC" ] || CSC=$(find / -name csc.dll -path "*Roslyn/bincore*" 2>/dev/null | head -1)
 REFS=$(ls "$MANAGED"/*.dll | grep -vE "Mono\.Security|System\.EnterpriseServices" | sed 's/^/-r:/' | tr '\n' ' ')
-OUT="$(dirname "$0")/../mod/PandaColonists/Scripts"
+OUT="$(dirname "$0")/../mod/Pandaborn/Scripts"
 mkdir -p "$OUT"
 dotnet "$CSC" -nologo -nostdlib -target:library -optimize -langversion:9 \
   -out:"$OUT/PandaColonistsFurV6.dll" $REFS "$(dirname "$0")/../src/scripts/PandaColonistsFur.cs"

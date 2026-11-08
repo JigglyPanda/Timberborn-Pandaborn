@@ -1,4 +1,5 @@
-# Panda Colonists v6 - fur settings (read when a game is loaded)
+# Pandaborn - fur settings (read when a game is loaded)
+# With the "Mod Settings" mod installed, use the in-game settings page instead (it overrides this file).
 #
 # quality = low | medium | high | ultra
 #   low    :  8 fur layers up close, fur on the 20 nearest pandas, gone beyond 13 m

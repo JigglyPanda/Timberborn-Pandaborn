@@ -1,4 +1,4 @@
-// Panda Colonists v6.1 - shell + fin fur for the panda colonists.
+// Pandaborn - shell + fin fur for the panda colonists.
 // Needs the fur shader bundle (AssetBundles/pandacolonistsv6_win). Without it the fur silently stays off.
 using System;
 using System.Collections.Generic;
@@ -8,6 +8,7 @@ using Timberborn.AssetSystem;
 using Timberborn.BaseComponentSystem;
 using Timberborn.Beavers;
 using Timberborn.EntitySystem;
+using Timberborn.ModManagerScene;
 using Timberborn.TemplateInstantiation;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -22,6 +23,8 @@ namespace PandaColonistsV6
         public static float LodDistance, FadeStart, MaxDistance;
         public static bool Motion = true;
         public static bool Fins = true;
+        public static float LengthMultiplier = 1f;
+        public static string ModPath;     // set by PandabornStarter (assemblies are loaded from memory, so no Location)
         public static float LengthAdult = 0.014f, LengthChild = 0.013f;
         public static float DensityAdult = 520f, DensityChild = 600f;
         public const int ReferenceShells = 16;
@@ -29,7 +32,7 @@ namespace PandaColonistsV6
 
         static PandaFurSettings() { ApplyPreset("high"); }
 
-        private static void ApplyPreset(string q)
+        public static void ApplyPreset(string q)
         {
             switch (q)
             {
@@ -47,6 +50,7 @@ namespace PandaColonistsV6
 
         public static string SettingsPath()
         {
+            if (!string.IsNullOrEmpty(ModPath)) return Path.Combine(ModPath, "PandaFurSettings.txt");
             try
             {
                 var dll = typeof(PandaFurSettings).Assembly.Location;
@@ -62,7 +66,7 @@ namespace PandaColonistsV6
             }
             catch (Exception) { }
             return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
-                                "Timberborn", "Mods", "PandaColonistsV2", "PandaFurSettings.txt");
+                                "Timberborn", "Mods", "Pandaborn", "PandaFurSettings.txt");
         }
 
         public static void Load()
@@ -142,7 +146,6 @@ namespace PandaColonistsV6
             try
             {
                 PandaFurSettings.Load();
-                if (!PandaFurSettings.Enabled) return;
                 // (re)load when missing: mod bundles are unloaded/reloaded between game sessions
                 if (!_adultMat)
                 {
@@ -288,11 +291,6 @@ namespace PandaColonistsV6
             _shellMat = new Material(_template);
             _shellMat.SetFloat(FurLength, _child ? PandaFurSettings.LengthChild : PandaFurSettings.LengthAdult);
             _shellMat.SetFloat(FurDensity, _child ? PandaFurSettings.DensityChild : PandaFurSettings.DensityAdult);
-            if (!PandaFurSettings.Motion)
-            {
-                _shellMat.SetFloat(MotionGain, 0f);
-                _shellMat.SetFloat(Wind, 0f);
-            }
             _shellMat.SetFloat(IsFin, 0f);
             _shellMat.SetFloat(Cull, (float)CullMode.Back);
             _finMat = new Material(_shellMat);
@@ -304,7 +302,7 @@ namespace PandaColonistsV6
             _densityScale = 0.9f + 0.2f * (float)rnd.NextDouble();
             _clump = (_child ? 0.2f : 0.3f) + 0.18f * (float)rnd.NextDouble();
             _block = new MaterialPropertyBlock();
-            _fur.sharedMaterials = PandaFurSettings.Fins ? new[] { _shellMat, _finMat } : new[] { _shellMat };
+            _fur.sharedMaterials = new[] { _shellMat, _finMat };
             _fur.shadowCastingMode = ShadowCastingMode.Off;   // the body already casts the shadow
             _fur.receiveShadows = true;
             _fur.lightProbeUsage = _source.lightProbeUsage;
@@ -420,7 +418,7 @@ namespace PandaColonistsV6
                     if (!edgeSet.ContainsKey(key)) { edgeSet[key] = true; edges.Add(a); edges.Add(b); }
                 }
             }
-            int fins = PandaFurSettings.Fins ? edges.Count / 2 : 0;
+            int fins = edges.Count / 2;   // always built; the fin material is switched on/off live
 
             int shellVerts = V * shells;
             int total = shellVerts + fins * 4;
@@ -503,6 +501,15 @@ namespace PandaColonistsV6
                 Build();
             }
             if (!_fur) return;
+            if (!PandaFurSettings.Enabled)
+            {
+                if (_fur.enabled) _fur.enabled = false;
+                _lastDistance = float.MaxValue;
+                return;
+            }
+            int wantMaterials = PandaFurSettings.Fins ? 2 : 1;
+            if (_fur.sharedMaterials.Length != wantMaterials)
+                _fur.sharedMaterials = PandaFurSettings.Fins ? new[] { _shellMat, _finMat } : new[] { _shellMat };
 
             var cam = Camera.main;
             bool visible = cam && _source.enabled && _source.isVisible && _source.gameObject.activeInHierarchy;
@@ -516,6 +523,7 @@ namespace PandaColonistsV6
 
             SetShells(d < PandaFurSettings.LodDistance ? PandaFurSettings.NearShells : PandaFurSettings.FarShells);
             if (PandaFurSettings.Motion) UpdateMoveLag();
+            else _lag = Vector4.zero;
 
             var src = _source.sharedMaterial;
             var b = _block;
@@ -539,7 +547,9 @@ namespace PandaColonistsV6
                                             Mathf.Max(0.01f, PandaFurSettings.MaxDistance - PandaFurSettings.FadeStart));
             b.SetFloat(FurFade, fade);
             b.SetFloat(ShellBoost, (float)PandaFurSettings.ReferenceShells / _shells);
-            b.SetFloat(LengthScale, _lengthScale);
+            b.SetFloat(LengthScale, _lengthScale * PandaFurSettings.LengthMultiplier);
+            b.SetFloat(MotionGain, PandaFurSettings.Motion ? 1.2f : 0f);
+            b.SetFloat(Wind, PandaFurSettings.Motion ? 0.25f : 0f);
             b.SetFloat(DensityScale, _densityScale);
             b.SetFloat(Clump, _clump);
             b.SetVector(MoveLag, _lag);
@@ -588,6 +598,29 @@ namespace PandaColonistsV6
             foreach (var p in All) Distances.Add(p._lastDistance);
             Distances.Sort();
             _budgetDistance = cap > 0 ? Distances[cap - 1] : -1f;
+        }
+    }
+
+    /// <summary>Runs once when the game loads mods: remembers the mod folder and, when the Mod Settings mod is
+    /// installed, loads the in-game settings page (kept in a separate file so the mod works without it).</summary>
+    public class PandabornStarter : IModStarter
+    {
+        public void StartMod(IModEnvironment modEnvironment)
+        {
+            try
+            {
+                PandaFurSettings.ModPath = modEnvironment.ModPath;
+                bool hasModSettings = false;
+                foreach (var a in AppDomain.CurrentDomain.GetAssemblies())
+                    if (a.GetName().Name == "ModSettings.Core") { hasModSettings = true; break; }
+                var bin = Path.Combine(modEnvironment.ModPath, "Scripts", "PandabornSettings.bin");
+                if (hasModSettings && File.Exists(bin))
+                    System.Reflection.Assembly.Load(File.ReadAllBytes(bin));
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning("[Pandaborn] settings page not loaded: " + e.Message);
+            }
         }
     }
 

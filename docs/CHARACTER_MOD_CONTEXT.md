@@ -1,7 +1,7 @@
 # Context brief: a Timberborn custom-characters mod
 
-> Paste this to the Claude instance working on the new project. It comes from the team that built **Panda Colonists**
-> (https://github.com/JigglyPanda/Timberborn-Panda-Skin), a mod that turns every Timberborn beaver into a panda.
+> Paste this to the Claude instance working on the new project. It comes from the team that built **Pandaborn**
+> (https://github.com/JigglyPanda/Timberborn-Pandaborn), a mod that turns every Timberborn beaver into a panda.
 > Everything under "Verified facts" was tested in the real game (Timberborn 1.x, Unity 6000.5.x, Windows).
 > Everything under "Ideas" is a proposal, not yet tested.
 
@@ -13,7 +13,7 @@ Build a Timberborn **characters framework**: replace the colonists with any 3D c
 * **Advanced side:** artists ship high-quality character packs with hand-tuned fitting, multiple variants per
   faction, kits (children), custom fur or shaders, portraits and settings. They can publish them as their own
   Steam Workshop / mod.io mods that depend on the framework.
-* Like Panda Colonists, it must be purely visual. Save-safe, every job and animation working, outfits, tools and
+* Like Pandaborn, it must be purely visual. Save-safe, every job and animation working, outfits, tools and
   carried goods still attached, and **performance as top priority**.
 
 ## 2. Verified facts about Timberborn modding
@@ -38,6 +38,19 @@ Build a Timberborn **characters framework**: replace the colonists with any 3D c
 * **Compile** against `Timberborn_Data/Managed/*.dll` with Roslyn `csc.dll -nostdlib`, excluding
   `Mono.Security` and `System.EnterpriseServices`. `System.Core` may be missing, so avoid `HashSet` and use
   `Dictionary`. NuGet may be blocked in a sandbox; that's fine, since nothing extra is needed.
+* **How code loads:** the game reads every `*.dll` anywhere in an enabled mod's folder with
+  `Assembly.Load(bytes)`. So `Assembly.Location` is empty; get your folder from `IModStarter.StartMod(IModEnvironment)`
+  via `modEnvironment.ModPath`. All mods' DLLs are loaded first, then every `IModStarter` runs, then Bindito scans
+  `GetTypes()` of every assembly with no try/catch. A DLL that references a mod that isn't installed therefore crashes the
+  game. Pandaborn ships its optional Mod Settings page as `Scripts/PandabornSettings.bin` and loads it from its
+  `IModStarter` only when the `ModSettings.Core` assembly is present.
+* **Mod Settings mod** (`eMka.ModSettings`, the de-facto settings UI):
+  * Subclass `ModSettingsOwner` with a `(ISettings, ModSettingsOwnerRegistry, ModRepository)` constructor.
+  * Expose public get-only properties (`ModSetting<bool/int/float/string>`, `RangeIntModSetting`,
+    `LimitedStringModSetting`) built with `ModSettingDescriptor.Create(name).SetTooltip(...)`.
+  * Set `ModId` to your manifest Id, and override `ChangeableOn => ModSettingsContext.All` for live changes.
+  * Bind it with `Bind<T>().AsSingleton()` in `[Context("MainMenu")]` and `[Context("Game")]`.
+  * List it in the manifest as `"OptionalMods": [{"Id": "eMka.ModSettings"}]`. That also orders the load.
 * **Asset bundles:** files at `<mod>/AssetBundles/<name>_win` load automatically.
   * Inside the bundle, asset paths are truncated after `resources/`. So
     `Assets/Mods/X/AssetBundles/Resources/Foo/Bar.mat` loads as `IAssetLoader.LoadSafe<Material>("Foo/Bar")`.
@@ -109,14 +122,14 @@ beaver's ~1,700 vertices as ~1,700 "bones":
    `p = Σ wᵢ (posᵢ(t) + qᵢ(t)·qᵢ(0)⁻¹·(p₀ − posᵢ(0)))`.
    It's linear blend skinning with the beaver as the skeleton.
 
-This gives **every game animation for free**, at load time, with no offline baking. Panda Colonists did an offline
+This gives **every game animation for free**, at load time, with no offline baking. Pandaborn did an offline
 version of this (Kabsch neighbourhood transfer) and it held up across all 61 animations.
 
 Very different body plans need more than nearest-vertex binding. Snorlax, for example, is a ball with a head.
 * Use **region labels** (head, torso, left/right arm and leg, tail) on both meshes, so a custom arm binds only to
   the beaver arm.
 * Get the labels from the user, from a simple landmark picker, or by auto-segmenting with a few heuristics.
-* Optionally "inflate" the beaver toward the custom shape before binding, as Panda Colonists did with SDF
+* Optionally "inflate" the beaver toward the custom shape before binding, as Pandaborn did with SDF
   sculpting.
 
 ### Rendering path for arbitrary models
@@ -168,7 +181,7 @@ Workshop can draw takedowns, so keep the framework neutral and let players bring
 2. Add the GPU "beaver as skeleton" binding, so the mesh follows all animations. Test walk, run, swim and sleep.
 3. Add the character.json format, kits, factions, attachments and auto portraits.
 4. Add the runtime GLB loader and auto-fit for the simple side.
-5. Add region labels and a landmark tool for odd body plans, plus optional fur and shaders from Panda Colonists.
+5. Add region labels and a landmark tool for odd body plans, plus optional fur and shaders from Pandaborn.
 6. Package for Steam Workshop / mod.io, with a sample pack (the pandas could be the first pack).
 
 ## 6. Working setup that worked well for us

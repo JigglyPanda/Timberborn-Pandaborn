@@ -1,0 +1,13 @@
+{
+  "Name": "Pandaborn",
+  "Version": "7.0.0",
+  "Id": "JigglyPanda.Pandaborn",
+  "MinimumGameVersion": "1.0.0.0",
+  "Description": "Every Folktail becomes a giant panda and every Iron Teeth beaver a red panda. Panda-shaped adults and chibi kits on all original animations, 5 adult and 3 kit coats per faction (including rare brown and cinnamon pandas), real see-through fur on close-up pandas (soft layered strands, fuzzy outlines, fur that trails when pandas move, wet and badwater-matted fur), new portraits, and panda markings for modded factions. Fur is only drawn on the nearest pandas and fades out when you zoom away. Optional in-game settings with the Mod Settings mod; otherwise edit PandaFurSettings.txt. Outfits, hats, injuries, contamination and carried goods all still fit. Purely visual - safe to add to or remove from any save.",
+  "RequiredMods": [],
+  "OptionalMods": [
+    {
+      "Id": "eMka.ModSettings"
+    }
+  ]
+}

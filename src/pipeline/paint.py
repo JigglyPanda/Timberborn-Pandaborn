@@ -184,6 +184,121 @@ class Painter:
         out['front'] = front
         return out
 
+    # ------------------------------------------------------------ red panda
+    def red_masks(self, var, m):
+        """Red-panda markings on the same body: white face mask, tear stripes, dark legs/belly/bib, ear rims, tail rings."""
+        r, lm = self.r, self.lm
+        P, N = r['P'], r['N']
+        x, y, z = P[..., 0], P[..., 1], P[..., 2]
+        head = r['head'][..., 0]
+        front = m['front']
+        jag = m['jag']
+        ex, ey, ez = lm['eye']
+        nx, ny, nzc = lm['nose']
+        fz = smoothstep(ez - 0.07, ez - 0.035, z) * (head > 0.5)
+
+        def ell(cx, cy, rx, ry, soft=0.15):
+            d = np.sqrt(((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2) + jag * 14
+            return 1 - smoothstep(1 - soft, 1 + soft, d)
+
+        s = var.get('face_scale', 1.0)
+        white = ell(nx, ny - 0.010 * s, 0.047 * s, 0.036 * s)                      # muzzle
+        for sx in (1, -1):
+            white = np.maximum(white, ell(sx * (ex + 0.013 * s), ey - 0.031 * s, 0.026 * s, 0.022 * s))   # cheeks
+            white = np.maximum(white, ell(sx * ex * 0.55, ny - 0.006 * s, 0.030 * s, 0.026 * s))         # joins cheeks to muzzle
+            white = np.maximum(white, ell(sx * (ex - 0.001 * s), ey + 0.020 * s, 0.012 * s, 0.009 * s))   # brows
+        white *= fz * front
+        tear = np.zeros_like(x)
+        for sx in (1, -1):
+            a = np.array([sx * ex, ey - 0.006 * s]); b = np.array([sx * (abs(nx) + 0.013 * s), ny - 0.013 * s])
+            ab = b - a; t = np.clip(((x - a[0]) * ab[0] + (y - a[1]) * ab[1]) / (ab @ ab), 0, 1)
+            d = np.sqrt((x - a[0] - t * ab[0]) ** 2 + (y - a[1] - t * ab[1]) ** 2)
+            w = 0.0095 * s * (1.15 - 0.45 * t)
+            tear = np.maximum(tear, 1 - smoothstep(w * 0.55, w * 1.45, d + jag * 0.8))
+        tear *= fz * front
+        white = white * (1 - tear)
+        # dark throat/bib, belly, legs, arms
+        darm = r['darm'][..., 0]
+        arms = 1 - smoothstep(var.get('arm_reach', 0.035) - 0.012, var.get('arm_reach', 0.035) + 0.012, darm + jag * 1.5)
+        dsole = r['dsole'][..., 0]
+        legs = 1 - smoothstep(var.get('leg_reach', 0.150) * 0.85 - 0.015, var.get('leg_reach', 0.150) * 0.85 + 0.015, dsole + jag * 1.6)
+        legs = np.maximum(legs, r['sole'][..., 0])
+        under = smoothstep(-0.05, -0.45, N[..., 1] + jag * 6) * (head < 0.45)
+        bib = smoothstep(0.15, 0.55, N[..., 2] + jag * 6) * (head < 0.45) * smoothstep(var.get('band_y', 0.292) - 0.02, var.get('band_y', 0.292) - 0.075, y + jag * 3)
+        throat = (head > 0.3) * smoothstep(ny - 0.04 * s, ny - 0.075 * s, y + jag * 2) * front * 0.85
+        dark = np.maximum.reduce([arms, legs, under, bib, throat]) * (1 - r['tail'][..., 0])
+        dark = dark * (1 - white)
+        # ears: white rims, dark inside
+        ear = r['ear'][..., 0]
+        rim = smoothstep(0.25, 0.42, ear) * (1 - smoothstep(0.55, 0.72, ear))
+        inner = smoothstep(0.62, 0.8, ear)
+        # tail rings along the tail's length
+        tail = r['tail'][..., 0]
+        rings = (0.5 + 0.5 * np.sin(-z * var.get('ring_freq', 160.0) + jag * 40)) ** 3 * tail
+        return dict(white=white, tear=tear, dark=dark, ear_rim=rim * (head > 0.3), ear_in=inner, rings=rings)
+
+    def paint_red(self, var, beaver_tex_png, out_png):
+        S = self.S
+        m = self.masks(var)
+        rm = self.red_masks(var, m)
+        r = self.r
+        P, N = r['P'], r['N']
+        tone = fbm(P * 18.0, 3, var.get('seed', 0) + 31)[..., None]
+        red = np.array(var['red']); dark = np.array(var['dark']); white = np.array(var['white'])
+        # coat: deeper red along the back, brighter gingery head and flanks
+        back = smoothstep(-0.2, -0.8, N[..., 2])[..., None] * (r['head'][..., :1] < 0.5)
+        top = smoothstep(0.2, 0.9, N[..., 1])[..., None]
+        coat = red * (1 + 0.08 * tone) * (1 - 0.18 * back) + np.array(var.get('ginger', (0.06, 0.04, 0.0))) * top
+        col = coat
+        def over(c, a, k=0.6):
+            a = ndimage.gaussian_filter(a, k)[..., None]
+            return col * (1 - a) + c * a
+        col = over(dark * (1 + 0.1 * tone), rm['dark'], 2.5)
+        col = over(np.array(var.get('tear_col', (0.36, 0.12, 0.05))), rm['tear'], 1.2)
+        col = over(white * (1 + 0.03 * tone), rm['white'])
+        col = over(white * 0.95, rm['ear_rim'], 2.0)
+        col = over(dark * 1.3 + 0.02, rm['ear_in'], 2.0)
+        col = col * (1 - var.get('ring_depth', 0.45) * rm['rings'][..., None])
+        # nose / mouth / eyes (shared with the giant panda)
+        nose_c = np.array(var.get('nose_col', (0.045, 0.040, 0.042)))
+        col = col * (1 - m['nose'][..., None]) + nose_c * m['nose'][..., None]
+        col = col + 0.10 * m['nosehi'][..., None]
+        col = col * (1 - 0.75 * m['mouth'][..., None]) + 0.06 * m['mouth'][..., None] * nose_c
+        rim_c = np.array(var.get('eye_rim', (0.13, 0.08, 0.06)))
+        col = col * (1 - m['eyerim'][..., None]) + rim_c * m['eyerim'][..., None]
+        col = col * (1 - m['eye'][..., None]) + np.array(var.get('iris', (0.10, 0.065, 0.04))) * m['eye'][..., None]
+        col = col + np.array(var.get('iris_low', (0.0, 0.0, 0.0))) * m['eyelow'][..., None]
+        col = col * (1 - m['eyehi'][..., None]) + np.array((0.97, 0.97, 0.95)) * m['eyehi'][..., None]
+        col = col * (1 - m['eyehi2'][..., None]) + np.array((0.92, 0.92, 0.95)) * m['eyehi2'][..., None]
+        bl = ndimage.gaussian_filter(m['blush'], 2.0)[..., None]
+        col = col * (1 - bl) + np.array(var.get('blush_col', (0.93, 0.62, 0.62))) * bl
+        sole = r['sole'][..., 0]
+        col = col * (1 - 0.35 * sole[..., None])
+        # fur strokes from the original artwork + micro fur + AO (same as the giant panda)
+        bt = np.array(Image.open(beaver_tex_png).convert('RGB').resize((S, S), Image.BICUBIC)) / 255.0
+        lum = bt.mean(2)
+        hp = lum - ndimage.gaussian_filter(lum, 5.0)
+        hp = hp / (ndimage.gaussian_filter(lum, 5.0) + 0.05)
+        hp = np.tanh(hp * 1.5) / 1.5
+        k = var.get('fur_detail', 0.22) * (1 - m['eye'] - m['eyerim']).clip(0, 1) * (1 - m['nose'])
+        col = col * (1 + (hp * k)[..., None])
+        fine = fbm(P * np.array([900, 300, 900]) + N * 40, 2, var.get('seed', 0) + 77)[..., None]
+        col = col * (1 + var.get('fluff', 0.035) * fine)
+        if self.beaver_ao is not None:
+            pa = ndimage.gaussian_filter(self.ao, 6)
+            ba = ndimage.gaussian_filter(self.beaver_ao, 6)
+            comp = np.clip((pa + 0.15) / (ba + 0.15), 0.8, 1.25) ** var.get('ao_comp', 0.35)
+            col = col * comp[..., None]
+        col = col * (0.82 + 0.18 * self.ao[..., None]) ** 0.7
+        soot = var.get('soot', 0.0)
+        if soot > 0:
+            g = np.clip(fbm(P * 7.0, 4, var.get('seed', 0) + 101) * 1.6 + 0.1, 0, 1)
+            col = col * (1 - soot * g[..., None] * np.array([1.0, 1.0, 0.92]))
+        col = np.clip(col, 0, 1)
+        img = raster.pad(col, self.mask)
+        Image.fromarray((img * 255 + 0.5).astype(np.uint8)).save(out_png, optimize=True)
+        return img
+
     # ------------------------------------------------------------ compose
     def paint(self, var, beaver_tex_png, out_png):
         S = self.S
