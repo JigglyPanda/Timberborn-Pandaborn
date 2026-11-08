@@ -202,26 +202,45 @@ class Painter:
             return 1 - smoothstep(1 - soft, 1 + soft, d)
 
         s = var.get('face_scale', 1.0)
-        white = ell(nx, ny - 0.010 * s, 0.047 * s, 0.036 * s)                      # muzzle
+        # ---- face markings drawn on the head's surface (angles around the head centre), so they wrap
+        #      around the cheeks instead of being a flat front-view stencil
+        hm = head > 0.5
+        Hp = P[hm]
+        C = np.array([0.0, 0.5 * (Hp[:, 1].min() + Hp[:, 1].max()), 0.5 * (Hp[:, 2].min() + Hp[:, 2].max())])
+
+        def angles(px, py, pz):
+            vx, vy, vz = px - C[0], py - C[1], pz - C[2]
+            rr = np.sqrt(vx * vx + vy * vy + vz * vz) + 1e-9
+            return np.degrees(np.arctan2(np.abs(vx), vz)), np.degrees(np.arcsin(np.clip(vy / rr, -1, 1)))
+        th, ph = angles(x, y, z)
+        the, phe = angles(np.array(ex), np.array(ey), np.array(ez))
+        _, phn = angles(np.array(nx), np.array(ny), np.array(nzc))
+        u = th / max(float(the), 1.0)                         # 0 = centre line, 1 = eye
+        v = (ph - phn) / max(float(phe - phn), 1.0)           # 0 = nose, 1 = eye
+        wob = jag * 10
+        uv_ = var.get('mark', {})
+
+        def blob(cu, cv, ru, rv, soft=0.18):
+            dd = np.sqrt(((u - cu) / ru) ** 2 + ((v - cv) / rv) ** 2) + wob
+            return 1 - smoothstep(1 - soft, 1 + soft, dd)
+
+        onface = (head > 0.5) * smoothstep(-0.4, 0.1, N[..., 2] + 0.6)
+        white = blob(0.0, -0.18, 0.92, 0.70)                            # muzzle: nose, lips, chin top
+        white = white * (1 - smoothstep(0.30, 0.55, v))                 # red bridge of the nose stays red
+        white = np.maximum(white, blob(1.55, -0.02, 0.80, 0.62))        # cheeks, sweeping back towards the ears
+        white = np.maximum(white, blob(0.90, 1.58, 0.36, 0.17, 0.25))   # eyebrow ovals
+        white *= onface
+        # tear tracks: inner corner of the eye down to the corner of the mouth (narrow, dark rufous)
+        a = np.array([0.74, 0.70]); b = np.array([0.56, -0.46])
+        ab = b - a; t = np.clip(((u - a[0]) * ab[0] + (v - a[1]) * ab[1]) / (ab @ ab), 0, 1)
+        dd = np.sqrt((u - a[0] - t * ab[0]) ** 2 + (v - a[1] - t * ab[1]) ** 2)
+        w = 0.20 * (1 - t) + 0.10 * t
+        band = (1 - smoothstep(w * 0.35, w * 1.25, dd + wob * 0.15)) * onface * (1.0 - 0.2 * t)
+        # dark mahogany eye ring (also covers the game's fixed beaver eye-socket relief)
+        tear = np.zeros_like(x)
         for sx in (1, -1):
-            white = np.maximum(white, ell(sx * (ex + 0.013 * s), ey - 0.031 * s, 0.026 * s, 0.022 * s))   # cheeks
-            white = np.maximum(white, ell(sx * ex * 0.55, ny - 0.006 * s, 0.030 * s, 0.026 * s))         # joins cheeks to muzzle
-            white = np.maximum(white, ell(sx * (ex + 0.002 * s), ey + 0.024 * s, 0.012 * s, 0.009 * s))   # brows
-        white *= fz * front
-        # authentic red-panda eye ring + tear line: soft mahogany around the eye (also covers the game's fixed
-        # beaver eye-socket relief), tapering down to the corner of the mouth
-        tear = np.zeros_like(x); band = np.zeros_like(x)
-        for sx in (1, -1):
-            ring = ell(sx * ex, ey - 0.0015 * s, var.get('ring_rx', 0.0125) * s, var.get('ring_ry', 0.0110) * s, 0.35)
-            a = np.array([sx * (ex - 0.0015 * s), ey - 0.008 * s]); b = np.array([sx * (abs(nx) + 0.014 * s), ny - 0.017 * s])
-            ab = b - a; t = np.clip(((x - a[0]) * ab[0] + (y - a[1]) * ab[1]) / (ab @ ab), 0, 1)
-            d = np.sqrt((x - a[0] - t * ab[0]) ** 2 + (y - a[1] - t * ab[1]) ** 2)
-            w = s * (0.0105 * (1 - t) + 0.0055 * t)
-            line = 1 - smoothstep(w * 0.5, w * 1.25, d + jag * 0.6)
-            tear = np.maximum(tear, ring)
-            band = np.maximum(band, line)
-        tear *= fz * front * var.get('tear_strength', 0.95)
-        band *= fz * front
+            tear = np.maximum(tear, ell(sx * ex, ey - 0.0015 * s, var.get('ring_rx', 0.0125) * s, var.get('ring_ry', 0.0110) * s, 0.35))
+        tear *= fz * front * var.get('tear_strength', 0.85)
         white = white * (1 - np.maximum(tear, band))
         # dark throat/bib, belly, legs, arms
         darm = r['darm'][..., 0]
@@ -260,8 +279,8 @@ class Painter:
             a = ndimage.gaussian_filter(a, k)[..., None]
             return col * (1 - a) + c * a
         col = over(dark * (1 + 0.1 * tone), rm['dark'], 2.5)
-        col = over(red * 0.82, rm['band'], 1.5)                    # rusty band between cheek and muzzle
-        col = over(np.array(var.get('tear_col', (0.20, 0.055, 0.03))), rm['tear'], 2.0)
+        col = over(np.array(var.get('track_col', (0.47, 0.17, 0.065))), rm['band'], 2.5)   # tear tracks: soft rust
+        col = over(np.array(var.get('tear_col', (0.30, 0.095, 0.045))), rm['tear'], 2.5)
         col = over(white * (1 + 0.03 * tone), rm['white'])
         col = over(white * 0.95, rm['ear_rim'], 2.0)
         col = over(dark * 1.3 + 0.02, rm['ear_in'], 2.0)

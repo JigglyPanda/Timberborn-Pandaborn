@@ -64,10 +64,10 @@ if which == 'CHILD_V3':
     CUTE = dict(CUTE, eye_dy=0.0, eye_r=0.0165, hi_r=0.0050, patch_a=0.034, patch_b=0.031, patch_dy=-0.002, patch_dx=0.001)
 if V2:
     style = CUTE if kind == 'child' else REAL
-    RED = [dict(dict(v, **style), blush=0.25 if kind == 'child' else 0, ring_rx=0.025 if kind == 'child' else 0.0175, ring_ry=0.023 if kind == 'child' else 0.0155) for v in RED]
+    RED = [dict(dict(v, **style), blush=0.25 if kind == 'child' else 0, ring_rx=0.0215 if kind == 'child' else 0.0140, ring_ry=0.0200 if kind == 'child' else 0.0125) for v in RED]
     if kind == 'adult':
         # bigger, glossier eyes than the giant-panda adults: red pandas read as cute, not stern
-        RED = [dict(v, eye_r=0.0080, eye_rim_w=0.0014, hi_r=0.0026, ring_rx=0.0175, ring_ry=0.0155, sparkle2=True, eye_squash=1.0,
+        RED = [dict(v, eye_r=0.0080, eye_rim_w=0.0014, hi_r=0.0026, ring_rx=0.0140, ring_ry=0.0125, sparkle2=True, eye_squash=1.0,
                     iris=(0.07, 0.045, 0.035), iris_low=(0.10, 0.06, 0.04)) for v in RED]
 os.makedirs(outdir, exist_ok=True)
 for v in RED:
