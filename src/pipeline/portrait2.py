@@ -126,7 +126,7 @@ def light(name, loc, energy, size, color):
 # framing: head-and-shoulders, or full body for the new-game portrait
 top = p[:, 1].max(); bot = p[:, 1].min(); h = top - bot
 if a.full:
-    tz, dist, el, lens = bot + 0.5 * h, h * 3.3, 6, 70
+    tz, dist, el, lens = bot + 0.5 * h, h * 2.25, 6, 70
 else:
     tz, dist, el, lens = top - 0.33 * h, h * 1.95 if child else h * 1.85, 6, 70
 # Blender space: z up; character faces -Y

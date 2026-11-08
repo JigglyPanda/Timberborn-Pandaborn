@@ -215,7 +215,7 @@ class Painter:
             d = np.sqrt((x - a[0] - t * ab[0]) ** 2 + (y - a[1] - t * ab[1]) ** 2)
             w = 0.0095 * s * (1.15 - 0.45 * t)
             tear = np.maximum(tear, 1 - smoothstep(w * 0.55, w * 1.45, d + jag * 0.8))
-        tear *= fz * front
+        tear *= fz * front * var.get('tear_strength', 0.0)
         white = white * (1 - tear)
         # dark throat/bib, belly, legs, arms
         darm = r['darm'][..., 0]

@@ -12,11 +12,14 @@ Every Folktail becomes a giant panda and every Iron Teeth beaver a red panda.
   * fur that trails when pandas move
   * wet and badwater-matted fur
 * **New portraits** for both factions.
-* **Modded factions** that use the standard beaver body become giant pandas automatically.
+* **Any faction, any panda.** Folktails default to giant pandas and Iron Teeth to red pandas, but each can be
+  switched. Modded factions (Emberpelts, Leaf Coats, Badfurs, ...) can be giant pandas, red pandas, or keep their
+  own colours on the panda body.
 
 ## Settings
 * With the **Mod Settings** mod installed: *Settings > Mod settings > Pandaborn*. The options are fur on/off,
-  quality, distance, max furry pandas, fur length, fuzzy outlines and fur motion. Changes apply instantly.
+  quality, distance, max furry pandas, fur length, fuzzy outlines and fur motion, plus which animal each faction is.
+  Fur changes apply instantly; faction changes apply to new colonists (reload the save to update everyone).
 * Without it: edit `PandaFurSettings.txt` in this folder.
 
 ## Compatibility

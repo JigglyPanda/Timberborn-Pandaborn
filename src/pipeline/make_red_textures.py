@@ -65,6 +65,10 @@ if which == 'CHILD_V3':
 if V2:
     style = CUTE if kind == 'child' else REAL
     RED = [dict(dict(v, **style), blush=0.35 if kind == 'child' else 0) for v in RED]
+    if kind == 'adult':
+        # bigger, glossier eyes than the giant-panda adults: red pandas read as cute, not stern
+        RED = [dict(v, eye_r=0.0098, eye_rim_w=0.0015, hi_r=0.0030, sparkle2=True, eye_squash=1.0,
+                    iris=(0.07, 0.045, 0.035), iris_low=(0.10, 0.06, 0.04)) for v in RED]
 os.makedirs(outdir, exist_ok=True)
 for v in RED:
     v = dict(extra, **v)

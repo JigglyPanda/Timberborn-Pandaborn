@@ -7,6 +7,9 @@ using Bindito.Core;
 using Timberborn.AssetSystem;
 using Timberborn.BaseComponentSystem;
 using Timberborn.Beavers;
+using Timberborn.BlueprintSystem;
+using Timberborn.FactionSystem;
+using Timberborn.SingletonSystem;
 using Timberborn.EntitySystem;
 using Timberborn.ModManagerScene;
 using Timberborn.TemplateInstantiation;
@@ -109,6 +112,12 @@ namespace PandaColonistsV6
                         case "lengthchild": if (num) LengthChild = f; break;
                         case "densityadult": if (num) DensityAdult = f; break;
                         case "densitychild": if (num) DensityChild = f; break;
+                        case "folktails": FactionLooks.Folktails = FactionLooks.Normalize(v); break;
+                        case "ironteeth": FactionLooks.IronTeeth = FactionLooks.Normalize(v); break;
+                        case "otherfactions": FactionLooks.Others = FactionLooks.Normalize(v); break;
+                        default:
+                            if (k.StartsWith("faction.")) FactionLooks.PerFaction[k.Substring(8)] = FactionLooks.Normalize(v);
+                            break;
                     }
                 }
                 FarShells = Mathf.Min(FarShells, NearShells);
@@ -127,6 +136,132 @@ namespace PandaColonistsV6
             int i = line.IndexOf('=');
             if (i <= 0) return null;
             return new[] { line.Substring(0, i).Trim().ToLowerInvariant(), line.Substring(i + 1).Trim() };
+        }
+    }
+
+    /// <summary>Which species each faction's colonists use: "giant", "red" or "own" (faction's own colours on the
+    /// panda body; modded factions only). The Folktails assets hold the giant pandas and the Iron Teeth assets the red
+    /// pandas, so a faction is reskinned by pointing its spec at the other faction's textures and portraits.</summary>
+    public static class FactionLooks
+    {
+        public const string Giant = "giant", Red = "red", Own = "own", Default = "default";
+        public static string Folktails = Giant, IronTeeth = Red, Others = Giant;
+        public static readonly Dictionary<string, string> PerFaction = new Dictionary<string, string>();
+
+        public static string Normalize(string v)
+        {
+            v = (v ?? "").Trim().ToLowerInvariant();
+            if (v.StartsWith("giant") || v == "panda") return Giant;
+            if (v.StartsWith("red")) return Red;
+            if (v.StartsWith("own") || v.StartsWith("faction")) return Own;
+            return Default;
+        }
+
+        public static string For(string factionId)
+        {
+            if (factionId == "Folktails") return Folktails == Red ? Red : Giant;
+            if (factionId == "IronTeeth") return IronTeeth == Giant ? Giant : Red;
+            string v;
+            if (factionId != null && PerFaction.TryGetValue(factionId.ToLowerInvariant(), out v) && v != Default) return v;
+            return Others == Default ? Giant : Others;
+        }
+    }
+
+    /// <summary>Applies <see cref="FactionLooks"/> to every faction spec (vanilla and modded) when a scene loads.</summary>
+    public class PandabornFactionSkins : ILoadableSingleton
+    {
+        private static readonly string[] Fields =
+        {
+            "Textures", "ChildTextures", "Avatar", "ChildAvatar", "ContaminatedAdultAvatar", "ContaminatedChildAvatar",
+            "NewGameFullAvatar"
+        };
+
+        private class RefComparer : IEqualityComparer<object>
+        {
+            public new bool Equals(object a, object b) { return ReferenceEquals(a, b); }
+            public int GetHashCode(object o) { return System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(o); }
+        }
+
+        // the values each spec object had before we touched it (specs are records: compare by reference)
+        private static readonly Dictionary<object, object[]> Originals = new Dictionary<object, object[]>(new RefComparer());
+        private static readonly List<FactionSpec> Specs = new List<FactionSpec>();
+        private readonly ISpecService _specService;
+
+        public PandabornFactionSkins(ISpecService specService)
+        {
+            _specService = specService;
+        }
+
+        public void Load()
+        {
+            try
+            {
+                PandaFurSettings.Load();
+                Specs.Clear();
+                foreach (var spec in _specService.GetSpecs<FactionSpec>())
+                {
+                    Specs.Add(spec);
+                    if (!Originals.ContainsKey(spec)) Originals[spec] = Read(spec);
+                }
+                Apply();
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning("[Pandaborn] faction looks not applied: " + e.Message);
+            }
+        }
+
+        /// <summary>Re-apply after a settings change (affects colonists created from now on).</summary>
+        public static void Apply()
+        {
+            object[] giant = null, red = null;
+            foreach (var spec in Specs)
+            {
+                if (spec.Id == "Folktails") giant = Originals[spec];
+                if (spec.Id == "IronTeeth") red = Originals[spec];
+            }
+            if (giant == null || red == null) return;
+            foreach (var spec in Specs)
+            {
+                var look = FactionLooks.For(spec.Id);
+                Write(spec, look == FactionLooks.Red ? red : look == FactionLooks.Giant ? giant : Originals[spec]);
+            }
+        }
+
+        private static System.Reflection.FieldInfo Field(string name)
+        {
+            return typeof(FactionSpec).GetField("<" + name + ">k__BackingField",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        }
+
+        private static object[] Read(FactionSpec spec)
+        {
+            var v = new object[Fields.Length];
+            for (int i = 0; i < Fields.Length; i++)
+            {
+                var f = Field(Fields[i]);
+                v[i] = f != null ? f.GetValue(spec) : null;
+            }
+            return v;
+        }
+
+        private static void Write(FactionSpec spec, object[] v)
+        {
+            for (int i = 0; i < Fields.Length; i++)
+            {
+                var f = Field(Fields[i]);
+                if (f != null && v[i] != null) f.SetValue(spec, v[i]);
+            }
+        }
+    }
+
+    [Context("MainMenu")]
+    [Context("Game")]
+    public class PandabornFactionSkinsConfigurator : Configurator
+    {
+        protected override void Configure()
+        {
+            Bind<PandabornFactionSkins>().AsSingleton();
         }
     }
 

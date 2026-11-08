@@ -21,7 +21,10 @@ and real see-through fur up close.
   * wet and badwater-matted fur
   * every panda's coat is slightly different
 * **Portraits** for both factions (adults, kits, contaminated and new-game), rendered from the actual 3D models with real hair.
-* **Modded factions** that use the standard beaver body become pandas automatically.
+* **Any faction, any panda.** Folktails default to giant pandas and Iron Teeth to red pandas, but every faction can be
+  set to either. That includes modded factions such as Emberpelts, Leaf Coats, Badfurs, Whitepaws and Deepfurs, which
+  can also keep their own fur colours on the panda body. Pandaborn swaps each faction's textures and portraits at load,
+  so faction mods need no special support.
 * Outfits, hats, injuries, the selection highlight, wet fur, contamination and carried goods all still line up.
   The original beaver texture layout is kept.
 
@@ -37,11 +40,17 @@ Fur is only drawn on the closest pandas (40 by default). It uses fewer layers at
 completely when you zoom out, so a zoomed-out colony costs the same as an unmodded one.
 
 With the **Mod Settings** mod (by eMka) installed, Pandaborn gets
-an in-game settings page (fur on/off, quality, distance, max furry pandas, fur length, fuzzy outlines, fur motion), and
-changes apply instantly. Without it, Pandaborn works the same and reads `PandaFurSettings.txt`:
+an in-game settings page with these options:
+
+* which animal each faction is (including every installed modded faction)
+* fur on/off, quality, distance, max furry pandas and fur length
+* fuzzy outlines and fur motion
+
+Fur changes apply instantly. Faction changes apply to colonists created afterwards; reload the save to update everyone. Without it, Pandaborn works the same and reads `PandaFurSettings.txt`:
 
 | setting | values |
 |---|---|
+| `folktails` / `ironteeth` / `otherfactions` | `giant` or `red` (modded factions also `own`); per faction: `faction.<Id> = ...` |
 | `quality` | `low` / `medium` / `high` (default) / `ultra` |
 | `enabled` | `false` turns the fur off (models and textures stay) |
 | `motion` | `false` stops fur follow-through and sway |
@@ -51,7 +60,7 @@ changes apply instantly. Without it, Pandaborn works the same and reads `PandaFu
 | path | contents |
 |---|---|
 | `mod/Pandaborn/` | The mod as installed, minus `Characters/Beaver/*.timbermesh`. Those files are 95 MB and 57 MB, too big for git, so they ship in Releases. |
-| `src/scripts/` | C# runtime code: the fur renderer and mod starter (`PandaColonistsFur.cs`), the in-game settings page (`PandabornSettings.cs`, shipped as `Scripts/PandabornSettings.bin` and only loaded when Mod Settings is installed) and modded-faction textures (`PandaReskin.cs`) |
+| `src/scripts/` | C# runtime code: the fur renderer and mod starter (`PandaColonistsFur.cs`), the in-game settings page (`PandabornSettings.cs`, shipped as `Scripts/PandabornSettings.bin` and only loaded when Mod Settings is installed) |
 | `src/unity/` | Fur shader, fur masks and the Unity editor build script. Drop this into the [official Timberborn modding project](https://github.com/mechanistry/timberborn-modding). |
 | `src/pipeline/` | Python and Blender pipeline that turns the game's beaver models into pandas and paints the textures and portraits |
 | `docs/` | Technical notes on the Timbermesh format, asset overrides, vertex animation and fur rendering |

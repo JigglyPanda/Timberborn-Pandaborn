@@ -13,5 +13,4 @@ mkdir -p "$OUT"
 dotnet "$CSC" -nologo -nostdlib -target:library -optimize -langversion:9 \
   -out:"$OUT/PandaColonistsFurV6.dll" $REFS "$(dirname "$0")/../src/scripts/PandaColonistsFur.cs"
 dotnet "$CSC" -nologo -nostdlib -target:library -optimize -langversion:9 \
-  -out:"$OUT/PandaReskin.dll" $REFS "$(dirname "$0")/../src/scripts/PandaReskin.cs"
 echo "built into $OUT"

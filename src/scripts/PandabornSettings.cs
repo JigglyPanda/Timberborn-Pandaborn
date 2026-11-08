@@ -6,6 +6,8 @@ using Bindito.Core;
 using ModSettings.Common;
 using ModSettings.Core;
 using PandaColonistsV6;
+using Timberborn.BlueprintSystem;
+using Timberborn.FactionSystem;
 using Timberborn.Modding;
 using Timberborn.SettingsSystem;
 
@@ -13,10 +15,58 @@ namespace PandabornSettingsPage
 {
     public class PandabornModSettings : ModSettingsOwner
     {
+        private readonly ISpecService _specService;
+        private readonly List<KeyValuePair<string, LimitedStringModSetting>> _factionSettings =
+            new List<KeyValuePair<string, LimitedStringModSetting>>();
+
         public PandabornModSettings(ISettings settings, ModSettingsOwnerRegistry modSettingsOwnerRegistry,
-                                    ModRepository modRepository)
+                                    ModRepository modRepository, ISpecService specService)
             : base(settings, modSettingsOwnerRegistry, modRepository)
         {
+            _specService = specService;
+        }
+
+        private static List<NonLocalizedLimitedStringModSettingValue> Looks(params string[] names)
+        {
+            var l = new List<NonLocalizedLimitedStringModSettingValue>();
+            foreach (var n in names) l.Add(new NonLocalizedLimitedStringModSettingValue(n));
+            return l;
+        }
+
+        public LimitedStringModSetting FolktailsLook { get; } = new LimitedStringModSetting(0,
+            Looks("Giant panda", "Red panda"),
+            ModSettingDescriptor.Create("Folktails are")
+                .SetTooltip("Applies to colonists born or loaded from now on (reload the save to update everyone)."));
+
+        public LimitedStringModSetting IronTeethLook { get; } = new LimitedStringModSetting(0,
+            Looks("Red panda", "Giant panda"),
+            ModSettingDescriptor.Create("Iron Teeth are")
+                .SetTooltip("Applies to colonists born or loaded from now on (reload the save to update everyone)."));
+
+        public LimitedStringModSetting OtherFactionsLook { get; } = new LimitedStringModSetting(0,
+            Looks("Giant panda", "Red panda", "Faction colours"),
+            ModSettingDescriptor.Create("Modded factions are")
+                .SetTooltip("Default for faction mods (Emberpelts, Leaf Coats, ...). 'Faction colours' keeps the faction's own fur colours on the panda body."));
+
+        protected override void OnBeforeLoad()
+        {
+            // one choice per installed modded faction
+            try
+            {
+                foreach (var spec in _specService.GetSpecs<FactionSpec>())
+                {
+                    if (spec.Id == "Folktails" || spec.Id == "IronTeeth") continue;
+                    var setting = new LimitedStringModSetting(0,
+                        Looks("Same as modded factions", "Giant panda", "Red panda", "Faction colours"),
+                        ModSettingDescriptor.Create("  " + spec.Id + " are"));
+                    AddCustomModSetting(setting, "Faction." + spec.Id);
+                    _factionSettings.Add(new KeyValuePair<string, LimitedStringModSetting>(spec.Id, setting));
+                }
+            }
+            catch (System.Exception e)
+            {
+                UnityEngine.Debug.LogWarning("[Pandaborn] modded faction settings: " + e.Message);
+            }
         }
 
         protected override string ModId => "JigglyPanda.Pandaborn";
@@ -79,6 +129,12 @@ namespace PandabornSettingsPage
                 PandaFurSettings.LodDistance = d * 0.5f;
             }
             if (MaxFurryPandas.Value > 0) PandaFurSettings.MaxFurryPandas = MaxFurryPandas.Value;
+            FactionLooks.Folktails = FactionLooks.Normalize(FolktailsLook.Value);
+            FactionLooks.IronTeeth = FactionLooks.Normalize(IronTeethLook.Value);
+            FactionLooks.Others = FactionLooks.Normalize(OtherFactionsLook.Value);
+            foreach (var kv in _factionSettings)
+                FactionLooks.PerFaction[kv.Key.ToLowerInvariant()] = FactionLooks.Normalize(kv.Value.Value);
+            PandabornFactionSkins.Apply();
         }
     }
 

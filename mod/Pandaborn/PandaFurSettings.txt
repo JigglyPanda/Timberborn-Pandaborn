@@ -8,6 +8,14 @@
 #   ultra  : 24 layers, 60 pandas, 28 m
 quality = high
 
+# Which animal each faction becomes: giant | red   (modded factions also: own = their own fur colours)
+folktails = giant
+ironteeth = red
+otherfactions = giant
+# per modded faction, e.g.:
+# faction.Emberpelts = red
+# faction.LeafCoats = own
+
 # enabled = false turns the fur off completely (pandas look exactly like v3)
 enabled = true
 
