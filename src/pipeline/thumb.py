@@ -64,11 +64,11 @@ def add_panda(kind, tex, pose, offset, yaw_deg):
     for i, w in enumerate(vw): vg.add([i], float(w), 'REPLACE')
     ps = ob.modifiers.new('hair', 'PARTICLE_SYSTEM').particle_system
     st = ps.settings
-    st.type = 'HAIR'; st.count = 60000; st.hair_length = (0.011 if child else 0.013) * 1.6
+    st.type = 'HAIR'; st.count = 70000; st.hair_length = (0.011 if child else 0.013) * 2.6
     st.child_type = 'INTERPOLATED'; st.rendered_child_count = 6
     st.clump_factor = 0.15; st.roughness_2 = 0.002; st.roughness_endpoint = 0.004
     st.use_advanced_hair = False
-    st.root_radius = 0.0011 if child else 0.0013; st.tip_radius = 0.0
+    st.root_radius = 0.0019 if child else 0.0022; st.tip_radius = 0.0
     ps.vertex_group_density = 'fur'; ps.vertex_group_length = 'fur'
     hm = bpy.data.materials.new(name + 'h'); hm.use_nodes = True
     hn = hm.node_tree; hb = hn.nodes['Principled BSDF']; hb.inputs['Roughness'].default_value = 0.7
