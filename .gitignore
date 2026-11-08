@@ -1,0 +1,6 @@
+# large character models ship in GitHub Releases, not git
+mod/PandaColonists/Characters/Beaver/*.timbermesh
+# game files must never be committed
+Timberborn_Data/
+*.pdb
+__pycache__/

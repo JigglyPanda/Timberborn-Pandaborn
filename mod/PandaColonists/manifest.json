@@ -1,0 +1,9 @@
+{
+  "Name": "Panda Colonists",
+  "Version": "6.1.0",
+  "Id": "PandaColonists.ReskinV2",
+  "MinimumGameVersion": "1.0.0.0",
+  "Description": "Every beaver becomes a giant panda - now with soft, see-through fur. Realistic giant-panda adults and chibi-cute cubs on all original animations, panda fur textures for every Folktails and Iron Teeth variant (including rare brown Qinling pandas), painted UI portraits and automatic panda markings for modded factions. v6 fur: plush layered fur that stays soft even seen head-on, real fuzzy strands along every outline, smooth fur over seams and paws, soft anti-aliased strands, combed and clumped like a real coat, game-matched lighting with a soft sheen, fur that trails when pandas move and sways in the breeze, wet and badwater-matted fur, and slightly different coats for every panda. Fur only renders on the closest pandas and fades out when you zoom away, with Low/Medium/High/Ultra quality presets in PandaFurSettings.txt. Outfits, hats, injuries, wet fur, contamination and carried goods all still fit. Purely visual - safe to add to or remove from any save.",
+  "RequiredMods": [],
+  "OptionalMods": []
+}

@@ -1,0 +1,29 @@
+# Panda Colonists v6 - fur settings (read when a game is loaded)
+#
+# quality = low | medium | high | ultra
+#   low    :  8 fur layers up close, fur on the 20 nearest pandas, gone beyond 13 m
+#   medium : 12 layers, 30 pandas, 16 m
+#   high   : 16 layers, 40 pandas, 20 m   (default)
+#   ultra  : 24 layers, 60 pandas, 28 m
+quality = high
+
+# enabled = false turns the fur off completely (pandas look exactly like v3)
+enabled = true
+
+# motion = false stops the fur trailing/swaying when pandas move
+motion = true
+
+# fins = false removes the fuzzy strands along outlines (slightly faster)
+fins = true
+
+# --- advanced overrides (remove the # to use) ---
+# nearShells = 16        # fur layers on pandas closer than lodDistance
+# farShells = 8          # fur layers further away
+# lodDistance = 10
+# fadeStart = 15         # fur starts fading out (metres from the camera)
+# maxDistance = 20       # no fur at all beyond this
+# maxFurryPandas = 40    # only the closest N pandas get fur
+# lengthAdult = 0.014    # fur length in metres
+# lengthChild = 0.013
+# densityAdult = 520     # strands per texture unit
+# densityChild = 600
