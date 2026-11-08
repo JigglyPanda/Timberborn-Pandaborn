@@ -17,13 +17,13 @@ def front_point(x, y, tol):
 
 
 if which.startswith('ADULT'):
-    lm = dict(eye=tuple(front_point(0.051, 0.487, 0.008)), nose=tuple(front_point(0.0, 0.440, 0.008)))
+    lm = dict(eye=tuple(front_point(0.040, 0.490, 0.006)), nose=tuple(front_point(0.0, 0.440, 0.008)))   # eye seated in the game's socket
     S, scale, kind, nvar = 2048, 1.0, 'adult', 5
     beaver_ao = E + 'common/adult_ao_2k.png'
     extra = {}
 elif which == 'CHILD_V3':
     # v3: eyes seated exactly in the game's fixed eyelid sockets (normal-map relief) so they read as one pair
-    lm = dict(eye=tuple(front_point(0.031, 0.303, 0.005)), nose=tuple(front_point(0.0, 0.266, 0.006)))
+    lm = dict(eye=tuple(front_point(0.0341, 0.3079, 0.005)), nose=tuple(front_point(0.0, 0.266, 0.006)))   # socket
     S, scale, kind, nvar = 2048, 0.66, 'child', 3
     beaver_ao = E + 'common/child_ao_1k.png'
     extra = dict(band_y=0.268, leg_reach=0.145, arm_reach=0.040, patch_a=0.034, patch_b=0.021, nose_w=0.021, nose_h=0.013, wobble=0.005)
@@ -64,10 +64,10 @@ if which == 'CHILD_V3':
     CUTE = dict(CUTE, eye_dy=0.0, eye_r=0.0165, hi_r=0.0050, patch_a=0.034, patch_b=0.031, patch_dy=-0.002, patch_dx=0.001)
 if V2:
     style = CUTE if kind == 'child' else REAL
-    RED = [dict(dict(v, **style), blush=0.35 if kind == 'child' else 0) for v in RED]
+    RED = [dict(dict(v, **style), blush=0.25 if kind == 'child' else 0, ring_rx=0.025 if kind == 'child' else 0.0175, ring_ry=0.023 if kind == 'child' else 0.0155) for v in RED]
     if kind == 'adult':
         # bigger, glossier eyes than the giant-panda adults: red pandas read as cute, not stern
-        RED = [dict(v, eye_r=0.0098, eye_rim_w=0.0015, hi_r=0.0030, sparkle2=True, eye_squash=1.0,
+        RED = [dict(v, eye_r=0.0080, eye_rim_w=0.0014, hi_r=0.0026, ring_rx=0.0175, ring_ry=0.0155, sparkle2=True, eye_squash=1.0,
                     iris=(0.07, 0.045, 0.035), iris_low=(0.10, 0.06, 0.04)) for v in RED]
 os.makedirs(outdir, exist_ok=True)
 for v in RED:

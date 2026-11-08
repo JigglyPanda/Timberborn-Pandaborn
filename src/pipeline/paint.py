@@ -206,17 +206,23 @@ class Painter:
         for sx in (1, -1):
             white = np.maximum(white, ell(sx * (ex + 0.013 * s), ey - 0.031 * s, 0.026 * s, 0.022 * s))   # cheeks
             white = np.maximum(white, ell(sx * ex * 0.55, ny - 0.006 * s, 0.030 * s, 0.026 * s))         # joins cheeks to muzzle
-            white = np.maximum(white, ell(sx * (ex - 0.001 * s), ey + 0.020 * s, 0.012 * s, 0.009 * s))   # brows
+            white = np.maximum(white, ell(sx * (ex + 0.002 * s), ey + 0.024 * s, 0.012 * s, 0.009 * s))   # brows
         white *= fz * front
-        tear = np.zeros_like(x)
+        # authentic red-panda eye ring + tear line: soft mahogany around the eye (also covers the game's fixed
+        # beaver eye-socket relief), tapering down to the corner of the mouth
+        tear = np.zeros_like(x); band = np.zeros_like(x)
         for sx in (1, -1):
-            a = np.array([sx * ex, ey - 0.006 * s]); b = np.array([sx * (abs(nx) + 0.013 * s), ny - 0.013 * s])
+            ring = ell(sx * ex, ey - 0.0015 * s, var.get('ring_rx', 0.0125) * s, var.get('ring_ry', 0.0110) * s, 0.35)
+            a = np.array([sx * (ex - 0.0015 * s), ey - 0.008 * s]); b = np.array([sx * (abs(nx) + 0.014 * s), ny - 0.017 * s])
             ab = b - a; t = np.clip(((x - a[0]) * ab[0] + (y - a[1]) * ab[1]) / (ab @ ab), 0, 1)
             d = np.sqrt((x - a[0] - t * ab[0]) ** 2 + (y - a[1] - t * ab[1]) ** 2)
-            w = 0.0095 * s * (1.15 - 0.45 * t)
-            tear = np.maximum(tear, 1 - smoothstep(w * 0.55, w * 1.45, d + jag * 0.8))
-        tear *= fz * front * var.get('tear_strength', 0.0)
-        white = white * (1 - tear)
+            w = s * (0.0105 * (1 - t) + 0.0055 * t)
+            line = 1 - smoothstep(w * 0.5, w * 1.25, d + jag * 0.6)
+            tear = np.maximum(tear, ring)
+            band = np.maximum(band, line)
+        tear *= fz * front * var.get('tear_strength', 0.95)
+        band *= fz * front
+        white = white * (1 - np.maximum(tear, band))
         # dark throat/bib, belly, legs, arms
         darm = r['darm'][..., 0]
         arms = 1 - smoothstep(var.get('arm_reach', 0.035) - 0.012, var.get('arm_reach', 0.035) + 0.012, darm + jag * 1.5)
@@ -235,7 +241,7 @@ class Painter:
         # tail rings along the tail's length
         tail = r['tail'][..., 0]
         rings = (0.5 + 0.5 * np.sin(-z * var.get('ring_freq', 160.0) + jag * 40)) ** 3 * tail
-        return dict(white=white, tear=tear, dark=dark, ear_rim=rim * (head > 0.3), ear_in=inner, rings=rings)
+        return dict(white=white, tear=tear, band=band, dark=dark, ear_rim=rim * (head > 0.3), ear_in=inner, rings=rings)
 
     def paint_red(self, var, beaver_tex_png, out_png):
         S = self.S
@@ -254,7 +260,8 @@ class Painter:
             a = ndimage.gaussian_filter(a, k)[..., None]
             return col * (1 - a) + c * a
         col = over(dark * (1 + 0.1 * tone), rm['dark'], 2.5)
-        col = over(np.array(var.get('tear_col', (0.36, 0.12, 0.05))), rm['tear'], 1.2)
+        col = over(red * 0.82, rm['band'], 1.5)                    # rusty band between cheek and muzzle
+        col = over(np.array(var.get('tear_col', (0.20, 0.055, 0.03))), rm['tear'], 2.0)
         col = over(white * (1 + 0.03 * tone), rm['white'])
         col = over(white * 0.95, rm['ear_rim'], 2.0)
         col = over(dark * 1.3 + 0.02, rm['ear_in'], 2.0)
