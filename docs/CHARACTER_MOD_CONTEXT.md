@@ -22,6 +22,11 @@ Build a Timberborn **characters framework**: replace the colonists with any 3D c
 * Mods live in `Documents\Timberborn\Mods\<ModFolder>\` and need a `manifest.json`:
   `{"Name","Version","Id","MinimumGameVersion","Description","RequiredMods":[],"OptionalMods":[]}`.
   Ids must be unique, so keep an Id stable across versions so players' installs upgrade.
+* **The name players see** in the in-game mod list is the manifest's `"Name"`. The folder name is never shown, and
+  Steam Workshop installs a mod into `steamapps\workshop\content\1062090\<item id>\` anyway. Every folder with a
+  `manifest.json` is listed as its own mod, though. When a mod is renamed or gets a new Id, old folders left behind
+  still appear under their old names and still override files, so tell users to delete them.
+* When two mods override the same file, the one that loads later wins.
 * **Asset override:** a mod file at the same relative path as a vanilla asset replaces it. Paths are matched
   lowercase with the extension stripped. This works for `.timbermesh` models and `.png` textures, e.g.
   `Characters/Beaver/BeaverAdult.Model.timbermesh` and `Materials/Beavers/Folktails/Adult/BeaverAdult1.Folktails.png`.
@@ -60,6 +65,19 @@ Build a Timberborn **characters framework**: replace the colonists with any 3D c
   * Delete its example mods if their game DLLs aren't imported, or compile errors block the editor menu.
   * Bundles are re-loaded between game sessions, so re-fetch loaded materials if they become null.
 
+### Factions
+* Each faction is a `FactionSpec` blueprint: `Id`, `Textures` / `ChildTextures` (the random pool for `_BaseMap`),
+  `Avatar`, `ChildAvatar`, `ContaminatedAdultAvatar`, `ContaminatedChildAvatar`, `NewGameFullAvatar`, and more.
+  `ISpecService.GetSpecs<FactionSpec>()` lists every faction, including modded ones (Emberpelts, Leaf Coats, ...).
+* **Re-skinning any faction without shipping assets per faction** works. Pandaborn does it from an
+  `ILoadableSingleton` bound in `[Context("MainMenu")]` and `[Context("Game")]`. At load it uses reflection to
+  rewrite the spec's `<Name>k__BackingField` fields, copying textures and avatars from the Folktails spec (giant
+  panda) or the IronTeeth spec (red panda), or restoring that faction's cached originals. Changes reach colonists
+  textured from then on, and a save reload updates everyone. A characters framework can pick a character per
+  faction at the same hook.
+* Untested: a faction mod that ships its own beaver *model* would replace the shared body for everyone, whichever
+  loads last.
+
 ### Characters
 * Each colonist model is one `.timbermesh`:
   * the file is zlib (header must be exactly `78 9C`, i.e. level 6) wrapped around protobuf `model.proto`, which is in
@@ -83,6 +101,10 @@ Build a Timberborn **characters framework**: replace the colonists with any 3D c
   * The faction texture is assigned at runtime as `_BaseMap` (`CharacterMaterialModifier` / `BeaverTextureSetter`).
   * The **AO and normal maps are fixed in the material and cannot be overridden by a mod**. Design around that:
     a new model must keep the beaver UV layout, or the beaver's AO/normal relief shows through, e.g. "double eyes".
+* **The fixed normal map also fixes where eyes can go.** The beaver's eye sockets and eyelid rings are in the normal
+  map, so eyes painted anywhere else show the beaver's eyes through as a second pair. Pandaborn found the socket
+  centre by template-matching the eyelid ring in the normal map, sat the painted eyes there, and added dark eye rims
+  to hide what relief remained.
 * **Keeping the beaver's UV layout** is what makes outfits, injuries and contamination line up automatically.
   A model with arbitrary UVs needs its own material and shader (see Ideas).
 
@@ -107,8 +129,24 @@ Build a Timberborn **characters framework**: replace the colonists with any 3D c
 * Big files: the adult model is about 96 MB and the kit about 57 MB, which is over GitHub's limits, so they ship
   in Releases.
 * Anything that needs Unity (shaders, bundles) must be built on the user's PC.
-* `run` animations are quadrupedal in vanilla. Users may want an "upright running" option, done by swapping in
-  the walk clip at runtime.
+* `run` animations are quadrupedal in vanilla. An "upright running" option could swap in the walk clip at runtime.
+  The user liked all-fours running on the pandas and dropped the toggle.
+* **Painting facial markings in UV space looks wrong.** The UV islands are stretched and split, so shapes that look
+  right flat come out distorted. The red panda face went through four rounds of "doesn't look like a red panda"
+  before it worked:
+  * Paint in head-surface **angle space**: azimuth and elevation around the head centre, normalised by landmark
+    angles (eye, nose), so u = azimuth / eye azimuth and v = elevation between nose and eye.
+  * Draw soft blobs and bands there: muzzle, cheek patches, brows, tear tracks and eye ring. Then bake them through
+    each texel's 3D position into the texture.
+  * Work from real photos of the animal. Tear tracks that are too dark or end in blobs read as "poop tears".
+* **Portraits:** painterly or oil-paint filters read as "AI-generated / trashy" to players. Clean studio renders of
+  the mod's own models with real particle hair (Blender Cycles: weld UV seams, subsurf level 2, about 60k strands
+  coloured from the texture) looked much better. Generative AI use is disclosed in the README and release notes.
+* **Blender runs out of memory** (7–8 GB) with four furry characters in one scene. Render each character as its
+  own transparent layer and composite.
+* **Keep the installed copy in sync with the release.** Textures in the user's installed mod were once a revision
+  behind the release folder, so they were testing old faces. Diff the installed copy against the build output
+  after each change.
 
 ## 4. Ideas for the characters framework (untested proposals)
 
@@ -192,3 +230,14 @@ Workshop can draw takedowns, so keep the framework neutral and let players bring
   user signed in to Unity Hub and approved each step.
 * Offline preview renders with headless Blender (Cycles) caught most problems before the user tested in game.
   In-game screenshots from the user were still essential for tuning.
+* **Computer-use limits on Windows:**
+  * File Explorer can only be clicked, not typed into.
+  * File dialogs block F2 and rename.
+  * With no shell, Claude can't rename, move or delete folders on the PC. It can only write files, so ask the user
+    for renames and deletes.
+* **GitHub:** pushing works through the session's git proxy. Creating or editing **Releases is refused** ("not
+  permitted for this session type"), so the user publishes releases by hand. Claude prepares the release folder
+  and the notes.
+* **Release layout** (Pandaborn): the mod folder zipped as `Pandaborn/` with `manifest.json`, `thumbnail.png`
+  (also the Workshop preview), `README.md`, `PandaFurSettings.txt`, `Scripts/`, `AssetBundles/`, `Materials/`,
+  `Sprites/`, and `Characters/Beaver/` holding only the two `.timbermesh` models (about 180 MB zipped).
