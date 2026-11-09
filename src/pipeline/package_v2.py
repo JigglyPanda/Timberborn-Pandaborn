@@ -2,7 +2,7 @@
 import os, shutil, json
 from PIL import Image
 
-OUT = '/root/w/mod/PandaColonistsV2'
+OUT = '/root/w/mod/Pandaborn'
 SRC = '/root/w/out2'
 if os.path.exists(OUT):
     shutil.rmtree(OUT)

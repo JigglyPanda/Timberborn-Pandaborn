@@ -1,7 +1,7 @@
 // Unity editor helper for Panda Colonists v6.
 // Lives in the Unity project at Assets/Mods/PandaColonists. menu: Panda Colonists > Build v6 Fur Bundle
 // (or batch mode: Unity.exe -batchmode -quit -projectPath <project> -executeMethod PandaColonistsV6Builder.Build)
-// The bundle is written straight to Documents/Timberborn/Mods/PandaColonistsV2/AssetBundles (the Panda Colonists mod folder).
+// The bundle is written straight to Documents/Timberborn/Mods/Pandaborn/AssetBundles (the Pandaborn mod folder).
 using System;
 using System.IO;
 using UnityEditor;
@@ -32,7 +32,7 @@ public static class PandaColonistsV6Builder
         var docs = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
         var outDir = Environment.GetEnvironmentVariable("PANDAFUR_OUT");
         if (string.IsNullOrEmpty(outDir))
-            outDir = Path.Combine(docs, "Timberborn", "Mods", "PandaColonistsV2", "AssetBundles");
+            outDir = Path.Combine(docs, "Timberborn", "Mods", "Pandaborn", "AssetBundles");
         Directory.CreateDirectory(outDir);
 
         var build = new AssetBundleBuild
